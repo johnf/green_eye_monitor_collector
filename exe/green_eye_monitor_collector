@@ -1,0 +1,58 @@
+#!/usr/bin/env ruby
+
+require 'green_eye_monitor/client'
+require 'smart_energy_group/client'
+require 'awesome_print'
+require 'yaml'
+
+seg_config = YAML.load_file('/etc/green_eye_monitor_collector/seg.yaml')
+
+gem = GreenEyeMonitor::Client.new
+
+retries = 0
+
+begin
+  puts 'Re Register'
+  jfy.re_register
+
+  puts 'Offine Query'
+  serial = jfy.offline_query
+rescue BadPacket, ReadTimeout => e
+  puts "Bad Packet #{e} ... Retrying" if @debug
+  puts if @debug
+  retries += 1
+  exit if retries > 5
+  retry
+end
+
+seg = SmartEnergyGroup::Client.new(seg_config[:site_id])
+
+loop do
+  data = jfy.query_normal_info(serial_num)
+
+  puts
+  puts '-------------------------'
+  puts
+  puts "Time: #{Time.now}"
+  puts
+  puts 'Realtime:'
+  puts "  Temp: #{data[:temperature]} C"
+  puts "  V: #{data[:voltage].join('/')} V"
+  puts "  I: #{data[:current].join('/')} A"
+  puts "  P: #{data[:power][:now]} W"
+  puts
+  puts 'Total:'
+  puts "  Power (today): #{data[:power][:today]} kWH"
+  puts "  Power (all time): #{data[:power][:total]} kWH"
+  puts "  Run Time: #{data[:hours]} Hours"
+  puts
+
+  pvoutput.add_status(
+    :energy_generated => data[:power][:today],
+    :power_generated  => data[:power][:now],
+    :temperature      => data[:temperature],
+    :voltage          => data[:voltage].first,
+  )
+
+  sleep(60 * 5)
+end
