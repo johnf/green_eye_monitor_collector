@@ -6,6 +6,7 @@ require 'awesome_print'
 require 'yaml'
 
 seg_config = YAML.load_file('/etc/green_eye_monitor_collector/seg.yaml')
+seg_config[:channels] ||= {}
 
 gem = GreenEyeMonitor::Client.new(:serial_port => '/dev/ttyUSB1', :debug => false)
 
@@ -34,14 +35,20 @@ loop do
   puts "  Current: #{data.current.to_a.join(', ')}"
   puts
 
-
-  seg.send_data(
-    'gem',
+  data = {
     :temperature => data.temperature,
-    :power => data.abs_watts,
-    :amps => data.current,
-    :voltage => [data.voltage]
-  )
+    :power       => data.abs_watts,
+    :amps        => data.current,
+    :voltage     => [data.voltage]
+  }
+
+  seg_config[:channels].each do |type, channels|
+    data[type] = Hash.new[channels.map { |i| [i, data[type][i - 1]] }]
+  end
+  p data
+  exit
+
+  seg.send_data('gem', data)
 
   old_data = data
 
