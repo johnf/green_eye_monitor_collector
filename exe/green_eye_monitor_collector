@@ -23,19 +23,7 @@ sleep(10)
 loop do
   data = gem.send_one_packet(old_data)
 
-  puts
-  puts '-------------------------'
-  puts
-  puts "Time: #{Time.now}"
-  puts
-  puts 'Realtime:'
-  puts "  Voltage: #{data.voltage}"
-  puts "  Temp: #{data.temperature.join(', ')}"
-  puts "  Power: #{data.abs_watts.join(', ')}"
-  puts "  Current: #{data.current.to_a.join(', ')}"
-  puts
-
-  data = {
+  options = {
     :temperature => data.temperature,
     :power       => data.abs_watts,
     :amps        => data.current,
@@ -43,12 +31,22 @@ loop do
   }
 
   seg_config[:channels].each do |type, channels|
-    data[type] = Hash.new[channels.map { |i| [i, data[type][i - 1]] }]
+    options[type] = Hash[channels.map { |i| [i, options[type][i - 1]] }]
   end
-  p data
-  exit
 
-  seg.send_data('gem', data)
+  seg.send_data('gem', options)
+
+  puts
+  puts '-------------------------'
+  puts
+  puts "Time: #{Time.now}"
+  puts
+  puts 'Realtime:'
+  puts "  Voltage: #{options[:voltage].first}"
+  puts "  Temp: #{options[:temperature].values.join(', ')}"
+  puts "  Power: #{options[:power].values.join(', ')}"
+  puts "  Current: #{options[:amps].values.join(', ')}"
+  puts
 
   old_data = data
 
